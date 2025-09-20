@@ -31,12 +31,11 @@ You are an immersive fantasy storyteller.
 
 Global rules:
 - 2nd person ("you...").
-- Tight narration (max 60 words).
+- Tight narration (max 40 words).
 - Maintain continuity using the summary. Do not contradict facts.
 - End with exactly:
-  A) <option A>
-  B) <option B>
-  (Or describe your own custom action.)
+  1) <option 1>
+  2) <option 2>
 
 === CANON SUMMARY (compact memory of prior story) ===
 ${summary || "(none)"}
@@ -54,7 +53,7 @@ ${JSON.stringify(character, null, 2)}
 
 ${
   isAB
-    ? `=== LAST SCENE (with options A/B) ===
+    ? `=== LAST SCENE (with options 1 or 2) ===
 ${lastScene}
 
 === PLAYER CHOICE ===
@@ -66,9 +65,8 @@ Continue the story treating this as the player's intent.`
 
 === OUTPUT FORMAT (render exactly like this) ===
 <Narration text...>
-A) <New option A>
-B) <New option B>
-(Or describe your own custom action.)
+1) <New option 1>
+2) <New option 2>
 `.trim();
 }
 
@@ -137,6 +135,9 @@ export default async function handler(
       });
       session.recent = [];
     }
+
+    console.log(session.summary);
+    console.log(session.state);
 
     sseWrite(res, { type: "done" });
     res.end();

@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&display=swap");
+
 .textStream {
   position: absolute;
   top: 0;
@@ -13,6 +15,7 @@
   white-space: pre-wrap;
   overflow-y: auto;
   z-index: 1;
+  font-family: "Pixelify Sans", monospace;
 }
 
 .recordContainer {
@@ -68,13 +71,13 @@
 
 .statusContainer {
   position: fixed;
-  bottom: 2rem;
+  bottom: 4rem;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   gap: 1rem;
   align-items: center;
-  z-index: 10;
+  z-index: 1;
 }
 
 .pill {
@@ -85,6 +88,8 @@
   font-size: 14px;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
+  font-family: "Pixelify Sans", monospace;
+  color: white;
 }
 
 .textToggle {
@@ -141,6 +146,8 @@
   padding: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   font-weight: 500;
+  font-family: "Pixelify Sans", monospace;
+  color: white;
 }
 
 .closeBtn {
@@ -226,6 +233,7 @@
   margin-bottom: 0.5rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.9);
+  font-family: "Pixelify Sans", monospace;
 }
 
 .formInput {
