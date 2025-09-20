@@ -12,13 +12,23 @@ export interface Character {
 interface CharacterSetupPopupProps {
   character: Character;
   onSave: (character: Character) => void;
+  onTestSpeechRecognition?: () => Promise<void>;
+  onEnsureMicrophone?: () => Promise<void>;
 }
 
 export default function CharacterSetupPopup({
   character,
   onSave,
+  onTestSpeechRecognition,
+  onEnsureMicrophone,
 }: CharacterSetupPopupProps) {
   const [formData, setFormData] = useState(character);
+  const [speechStatus, setSpeechStatus] = useState<
+    "idle" | "testing" | "success" | "failed"
+  >("idle");
+  const [micStatus, setMicStatus] = useState<
+    "idle" | "requesting" | "granted" | "denied"
+  >("idle");
 
   const handleSubmit = () => {
     const processedCharacter = {
@@ -35,6 +45,32 @@ export default function CharacterSetupPopup({
       backstory: formData.backstory.trim() || "A mysterious adventurer.",
     };
     onSave(processedCharacter);
+  };
+
+  const handleTestSpeechRecognition = async () => {
+    if (!onTestSpeechRecognition) return;
+
+    setSpeechStatus("testing");
+    try {
+      await onTestSpeechRecognition();
+      setSpeechStatus("success");
+    } catch (error) {
+      console.error("Speech recognition test failed:", error);
+      setSpeechStatus("failed");
+    }
+  };
+
+  const handleMicrophoneRequest = async () => {
+    if (!onEnsureMicrophone) return;
+
+    setMicStatus("requesting");
+    try {
+      await onEnsureMicrophone();
+      setMicStatus("granted");
+    } catch (error) {
+      console.error("Microphone access failed:", error);
+      setMicStatus("denied");
+    }
   };
 
   return (
@@ -104,6 +140,49 @@ export default function CharacterSetupPopup({
             }
           />
         </div>
+
+        {/* iOS Speech Recognition Setup */}
+        {(onTestSpeechRecognition || onEnsureMicrophone) && (
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>
+              Voice Features (Required for iOS)
+            </label>
+            <div className={styles.voiceSetupContainer}>
+              {onEnsureMicrophone && (
+                <button
+                  type="button"
+                  className={`${styles.voiceButton} ${styles[micStatus]}`}
+                  onClick={handleMicrophoneRequest}
+                  disabled={micStatus === "requesting"}
+                >
+                  {micStatus === "idle" && "🎤 Enable Microphone"}
+                  {micStatus === "requesting" && "🎤 Requesting..."}
+                  {micStatus === "granted" && "🎤 Microphone Ready"}
+                  {micStatus === "denied" && "🎤 Access Denied"}
+                </button>
+              )}
+
+              {onTestSpeechRecognition && (
+                <button
+                  type="button"
+                  className={`${styles.voiceButton} ${styles[speechStatus]}`}
+                  onClick={handleTestSpeechRecognition}
+                  disabled={speechStatus === "testing"}
+                >
+                  {speechStatus === "idle" && "🗣️ Test Speech Recognition"}
+                  {speechStatus === "testing" && "🗣️ Testing..."}
+                  {speechStatus === "success" && "🗣️ Speech Ready"}
+                  {speechStatus === "failed" && "🗣️ Speech Failed"}
+                </button>
+              )}
+            </div>
+            <p className={styles.voiceHint}>
+              On iOS, tap these buttons to enable voice features. Use Safari for
+              best compatibility.
+            </p>
+          </div>
+        )}
+
         <button className={styles.startButton} onClick={handleSubmit}>
           Start Adventure
         </button>

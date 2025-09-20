@@ -18,7 +18,6 @@ export default function TextPopup({
   const [micStatus, setMicStatus] = useState<
     "idle" | "requesting" | "granted" | "denied"
   >("idle");
-  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const handleSendText = () => {
     const action = textInput.trim();
@@ -32,15 +31,12 @@ export default function TextPopup({
     if (!onEnsureMic) return;
 
     setMicStatus("requesting");
-    setErrorMessage("");
-    
     try {
       await onEnsureMic();
       setMicStatus("granted");
     } catch (error) {
       console.error("Microphone access failed:", error);
       setMicStatus("denied");
-      setErrorMessage(error instanceof Error ? error.message : "Microphone access failed");
     }
   };
 
@@ -61,7 +57,7 @@ export default function TextPopup({
           ×
         </button>
       </div>
-      <div>
+      <div className={styles.popupContent}>
         <textarea
           className={styles.textInput}
           placeholder="Type your action here..."
@@ -86,11 +82,6 @@ export default function TextPopup({
             Send
           </button>
         </div>
-        {errorMessage && (
-          <div className={styles.errorMessage}>
-            ⚠️ {errorMessage}
-          </div>
-        )}
       </div>
     </div>
   );

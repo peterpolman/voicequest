@@ -39,6 +39,19 @@ export default function AudioRPG() {
     await sendAction(sessionId.current, character, text, speakRealtimeText);
   };
 
+  // Test speech recognition function
+  const testSpeechRecognition = async () => {
+    try {
+      await ensureMic(); // Ensure microphone access first
+      const result = await startSpeechRecognition();
+      console.log("Speech recognition test successful:", result);
+      // Could show a success message or play the result
+    } catch (error) {
+      console.error("Speech recognition test failed:", error);
+      throw error; // Re-throw to let the UI handle the error state
+    }
+  };
+
   // Recording control functions
   const startRecording = async () => {
     if (isRecording) return;
@@ -184,6 +197,8 @@ export default function AudioRPG() {
         <CharacterSetupPopup
           character={character}
           onSave={saveCharacterFromForm}
+          onTestSpeechRecognition={testSpeechRecognition}
+          onEnsureMicrophone={ensureMic}
         />
       )}
     </>
