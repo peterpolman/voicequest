@@ -24,7 +24,7 @@ export default function AudioRPG() {
   const [isRecording, setIsRecording] = useState(false);
 
   // Refs for managing state
-  const sessionId = useRef(crypto.randomUUID());
+  const sessionId = useRef(new Date().getTime().toString());
 
   // Custom hooks
   const { ensureMic, startSpeechRecognition } = useSpeechRecognition();
@@ -176,6 +176,7 @@ export default function AudioRPG() {
         isVisible={showTextPopup}
         onClose={() => setShowTextPopup(false)}
         onSendText={handleSendText}
+        onEnsureMic={ensureMic}
       />
 
       {/* Character Setup Popup */}

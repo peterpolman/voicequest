@@ -199,9 +199,8 @@
 }
 
 .sendButton {
-  width: 100%;
+  flex: 1;
   padding: 0.8rem;
-  margin-top: 1rem;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 0.5rem;
@@ -218,6 +217,66 @@
 
 .sendButton:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.popupActions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.micButton {
+  flex: 1;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.5rem;
+  color: white;
+  font-family: "Pixelify Sans", monospace;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.micButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.micButton.requesting {
+  background: rgba(255, 255, 0, 0.2);
+  border-color: rgba(255, 255, 0, 0.5);
+  cursor: not-allowed;
+}
+
+.micButton.granted {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: rgba(0, 255, 0, 0.5);
+}
+
+.micButton.denied {
+  background: rgba(255, 0, 0, 0.2);
+  border-color: rgba(255, 0, 0, 0.5);
+}
+
+.micButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.errorMessage {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  border-radius: 0.5rem;
+  color: #ffaaaa;
+  font-family: "Pixelify Sans", monospace;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .characterPopup {
