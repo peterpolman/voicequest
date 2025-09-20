@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-export function useSpeechSynthesis() {
+export function useSpeechSynthesis(language: "en" | "nl" = "en") {
   const spokenTextLength = useRef(0);
   const lastSpeechText = useRef("");
   const speechQueue = useRef<string[]>([]);
@@ -89,48 +89,68 @@ export function useSpeechSynthesis() {
     utterance.rate = 0.9; // Slightly slower for iOS stability
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
-    utterance.lang = "en-US"; // Explicit language setting for iOS
 
-    // iOS Safari voice selection fix
+    // Set language based on selected language
+    utterance.lang = language === "nl" ? "nl-NL" : "en-US";
+
+    // Language-specific voice selection
     const setVoice = () => {
       const voices = speechSynthesis.getVoices();
-      console.log("Available voices:", voices.length);
+      console.log("Available voices:", voices.length, "Language:", language);
 
       if (voices.length > 0) {
-        // iOS-specific voice preferences
-        const preferredVoice = voices.find(
-          (voice) =>
-            (voice.name.includes("Samantha") ||
-              voice.name.includes("Alex") ||
-              voice.name.includes("Karen") ||
-              voice.name.includes("Daniel") ||
-              voice.name.includes("Moira") ||
-              voice.localService === true) && // Prefer local voices on iOS
-            voice.lang.startsWith("en")
-        );
+        let preferredVoice;
+
+        if (language === "nl") {
+          // Dutch voice preferences
+          preferredVoice = voices.find(
+            (voice) =>
+              (voice.name.includes("Ellen") ||
+                voice.name.includes("Xander") ||
+                voice.name.includes("Claire") ||
+                voice.localService === true) && // Prefer local voices on iOS
+              voice.lang.startsWith("nl")
+          );
+
+          if (!preferredVoice) {
+            // Fallback to any Dutch voice
+            preferredVoice = voices.find((voice) =>
+              voice.lang.startsWith("nl")
+            );
+          }
+        } else {
+          // English voice preferences (existing logic)
+          preferredVoice = voices.find(
+            (voice) =>
+              (voice.name.includes("Samantha") ||
+                voice.name.includes("Alex") ||
+                voice.name.includes("Karen") ||
+                voice.name.includes("Daniel") ||
+                voice.name.includes("Moira") ||
+                voice.localService === true) && // Prefer local voices on iOS
+              voice.lang.startsWith("en")
+          );
+
+          if (!preferredVoice) {
+            // Fallback to any English voice
+            preferredVoice = voices.find((voice) =>
+              voice.lang.startsWith("en")
+            );
+          }
+        }
 
         if (preferredVoice) {
           utterance.voice = preferredVoice;
           console.log(
             "Using voice:",
             preferredVoice.name,
+            "Language:",
+            preferredVoice.lang,
             "Local:",
             preferredVoice.localService
           );
         } else {
-          // Fallback to first English voice
-          const englishVoice = voices.find((voice) =>
-            voice.lang.startsWith("en")
-          );
-          if (englishVoice) {
-            utterance.voice = englishVoice;
-            console.log(
-              "Using fallback voice:",
-              englishVoice.name,
-              "Local:",
-              englishVoice.localService
-            );
-          }
+          console.warn(`No ${language} voice found, using system default`);
         }
       }
     };

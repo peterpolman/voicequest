@@ -13,9 +13,10 @@ export default function AudioRPG() {
   const [character, setCharacter] = useState<Character>({
     name: "Furial",
     class: "Rogue",
-    traits: ["curious", "whitty", "sneaky"],
+    traits: ["curious", "witty", "sneaky"],
     backstory:
       "Street urchin from Lowspire, keeps a silver coin for luck and holds a smart dagger for when in trouble.",
+    language: "nl",
   });
 
   // UI state
@@ -27,7 +28,9 @@ export default function AudioRPG() {
   const sessionId = useRef(new Date().getTime().toString());
 
   // Custom hooks
-  const { ensureMic, startSpeechRecognition } = useSpeechRecognition();
+  const { ensureMic, startSpeechRecognition } = useSpeechRecognition(
+    character.language
+  );
   const {
     speakFlush,
     speakRealtimeText,
@@ -35,7 +38,7 @@ export default function AudioRPG() {
     testSpeechSynthesis,
     spokenTextLength,
     lastSpeechText,
-  } = useSpeechSynthesis();
+  } = useSpeechSynthesis(character.language);
   const { status, textStream, setStatus, sendAction } = useStoryStream();
 
   // Helper function to send text to story

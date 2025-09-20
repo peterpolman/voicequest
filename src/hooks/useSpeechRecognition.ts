@@ -7,7 +7,7 @@ declare global {
   }
 }
 
-export function useSpeechRecognition() {
+export function useSpeechRecognition(language: "en" | "nl" = "en") {
   const mediaStream = useRef<MediaStream | null>(null);
 
   const initSpeechRecognition = () => {
@@ -25,8 +25,11 @@ export function useSpeechRecognition() {
 
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = "en-US";
+    // Set language based on character's language
+    recognition.lang = language === "nl" ? "nl-NL" : "en-US";
     recognition.maxAlternatives = 1;
+
+    console.log("Speech recognition language set to:", recognition.lang);
 
     return recognition;
   };

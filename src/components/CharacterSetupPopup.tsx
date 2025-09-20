@@ -6,6 +6,7 @@ export interface Character {
   class: string;
   traits: string[] | string;
   backstory: string;
+  language: "en" | "nl";
 }
 
 // Character Setup Component
@@ -48,6 +49,7 @@ export default function CharacterSetupPopup({
               .filter((t) => t)
           : formData.traits,
       backstory: formData.backstory.trim() || "A mysterious adventurer.",
+      language: formData.language || "en",
     };
     onSave(processedCharacter);
   };
@@ -157,6 +159,26 @@ export default function CharacterSetupPopup({
               setFormData({ ...formData, backstory: e.target.value })
             }
           />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel} htmlFor="charLanguage">
+            Language
+          </label>
+          <select
+            id="charLanguage"
+            className={styles.formInput}
+            value={formData.language}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                language: e.target.value as "en" | "nl",
+              })
+            }
+          >
+            <option value="en">🇺🇸 English</option>
+            <option value="nl">🇳🇱 Nederlands</option>
+          </select>
         </div>
 
         {/* iOS Speech Recognition Setup */}

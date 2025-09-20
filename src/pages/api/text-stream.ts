@@ -25,22 +25,71 @@ function buildPrompt({
 }) {
   const isAB = typeof action === "string" && /^[ab]$/i.test(action);
   const normalized = isAB ? action.toUpperCase() : action;
+  const language = character.language || "en";
 
-  return `
-You are an immersive fantasy storyteller.
-
-Global rules:
+  // Language-specific prompts
+  const prompts = {
+    en: {
+      intro: "You are an immersive fantasy storyteller.",
+      rules: `Global rules:
 - 2nd person ("you...").
 - Tight narration (max 40 words).
 - Maintain continuity using the summary. Do not contradict facts.
 - End with exactly:
   1) <option 1>
-  2) <option 2>
+  2) <option 2>`,
+      sections: {
+        summary: "CANON SUMMARY (compact memory of prior story)",
+        recent: "RECENT EXCHANGES (most recent first)",
+        character: "CHARACTER",
+        lastScene: "LAST SCENE (with options 1 or 2)",
+        playerChoice: "PLAYER CHOICE",
+        customAction: "PLAYER CUSTOM ACTION",
+        outputFormat: "OUTPUT FORMAT (render exactly like this)",
+      },
+      playerChoiceText: `The player chose option "${normalized}". Continue accordingly.`,
+      customActionText: `Continue the story treating this as the player's intent.`,
+      outputExample: `<Narration text...>
+1) <New option 1>
+2) <New option 2>`,
+    },
+    nl: {
+      intro: "Je bent een meeslepende fantasy verhalenverteller.",
+      rules: `Algemene regels:
+- 2de persoon ("je...").
+- Compacte verhaalvertelling (max 40 woorden).
+- Behoud continuïteit met de samenvatting. Spreek feiten niet tegen.
+- Eindig precies met:
+  1) <optie 1>
+  2) <optie 2>`,
+      sections: {
+        summary: "VERHAAL SAMENVATTING (compact geheugen van eerder verhaal)",
+        recent: "RECENTE UITWISSELINGEN (meest recent eerst)",
+        character: "KARAKTER",
+        lastScene: "LAATSTE SCÈNE (met opties 1 of 2)",
+        playerChoice: "SPELER KEUZE",
+        customAction: "SPELER AANGEPASTE ACTIE",
+        outputFormat: "OUTPUT FORMAAT (render precies zo)",
+      },
+      playerChoiceText: `De speler koos optie "${normalized}". Ga hier mee verder.`,
+      customActionText: `Zet het verhaal voort en behandel dit als de bedoeling van de speler.`,
+      outputExample: `<Verhaal tekst...>
+1) <Nieuwe optie 1>
+2) <Nieuwe optie 2>`,
+    },
+  };
 
-=== CANON SUMMARY (compact memory of prior story) ===
+  const p = prompts[language as keyof typeof prompts];
+
+  return `
+${p.intro}
+
+${p.rules}
+
+=== ${p.sections.summary.toUpperCase()} ===
 ${summary || "(none)"}
 
-=== RECENT EXCHANGES (most recent first) ===
+=== ${p.sections.recent.toUpperCase()} ===
 ${
   [...recent]
     .reverse()
@@ -48,25 +97,23 @@ ${
     .join("\n\n") || "(none)"
 }
 
-=== CHARACTER ===
+=== ${p.sections.character.toUpperCase()} ===
 ${JSON.stringify(character, null, 2)}
 
 ${
   isAB
-    ? `=== LAST SCENE (with options 1 or 2) ===
+    ? `=== ${p.sections.lastScene.toUpperCase()} ===
 ${lastScene}
 
-=== PLAYER CHOICE ===
-The player chose option "${normalized}". Continue accordingly.`
-    : `=== PLAYER CUSTOM ACTION ===
+=== ${p.sections.playerChoice.toUpperCase()} ===
+${p.playerChoiceText}`
+    : `=== ${p.sections.customAction.toUpperCase()} ===
 ${normalized}
-Continue the story treating this as the player's intent.`
+${p.customActionText}`
 }
 
-=== OUTPUT FORMAT (render exactly like this) ===
-<Narration text...>
-1) <New option 1>
-2) <New option 2>
+=== ${p.sections.outputFormat.toUpperCase()} ===
+${p.outputExample}
 `.trim();
 }
 
@@ -132,6 +179,7 @@ export default async function handler(
         oldSummary: session.summary,
         recent: session.recent,
         state: session.state,
+        language: character.language || "en",
       });
       session.recent = [];
     }
