@@ -5,6 +5,46 @@ export function useSpeechSynthesis() {
   const lastSpeechText = useRef("");
   const speechQueue = useRef<string[]>([]);
   const isSpeaking = useRef(false);
+  const isProcessingQueue = useRef(false);
+
+  // Test function to validate speech synthesis on iOS
+  const testSpeechSynthesis = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (!("speechSynthesis" in window)) {
+        console.warn("Speech Synthesis not supported");
+        resolve(false);
+        return;
+      }
+
+      const testUtterance = new SpeechSynthesisUtterance("Test");
+      testUtterance.volume = 0.1; // Very quiet test
+      testUtterance.rate = 2; // Fast test
+
+      let hasStarted = false;
+      const timeout = setTimeout(() => {
+        resolve(false);
+      }, 1000);
+
+      testUtterance.onstart = () => {
+        hasStarted = true;
+        clearTimeout(timeout);
+        speechSynthesis.cancel(); // Stop the test
+        resolve(true);
+      };
+
+      testUtterance.onerror = () => {
+        clearTimeout(timeout);
+        resolve(false);
+      };
+
+      testUtterance.onend = () => {
+        clearTimeout(timeout);
+        resolve(hasStarted);
+      };
+
+      speechSynthesis.speak(testUtterance);
+    });
+  };
 
   const speakFlush = () => {
     if (speechSynthesis.speaking) {
@@ -12,15 +52,44 @@ export function useSpeechSynthesis() {
     }
     speechQueue.current = [];
     isSpeaking.current = false;
+    isProcessingQueue.current = false;
     spokenTextLength.current = 0;
     lastSpeechText.current = "";
   };
 
+  // Initialize speech synthesis for iOS (must be called from user gesture)
+  const initializeSpeechSynthesis = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (!("speechSynthesis" in window)) {
+        resolve(false);
+        return;
+      }
+
+      // Force initialization by speaking a silent utterance
+      const initUtterance = new SpeechSynthesisUtterance(" ");
+      initUtterance.volume = 0;
+      initUtterance.rate = 10;
+
+      initUtterance.onend = () => {
+        console.log("Speech synthesis initialized");
+        resolve(true);
+      };
+
+      initUtterance.onerror = () => {
+        console.log("Speech synthesis initialization failed");
+        resolve(false);
+      };
+
+      speechSynthesis.speak(initUtterance);
+    });
+  };
+
   const createUtterance = (text: string): SpeechSynthesisUtterance => {
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1;
+    utterance.rate = 0.9; // Slightly slower for iOS stability
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
+    utterance.lang = "en-US"; // Explicit language setting for iOS
 
     // iOS Safari voice selection fix
     const setVoice = () => {
@@ -28,19 +97,26 @@ export function useSpeechSynthesis() {
       console.log("Available voices:", voices.length);
 
       if (voices.length > 0) {
-        // Try to find a good English voice
+        // iOS-specific voice preferences
         const preferredVoice = voices.find(
           (voice) =>
-            (voice.name.includes("Google UK English Male") ||
-              voice.name.includes("Samantha") ||
+            (voice.name.includes("Samantha") ||
+              voice.name.includes("Alex") ||
               voice.name.includes("Karen") ||
-              voice.name.includes("Daniel")) &&
+              voice.name.includes("Daniel") ||
+              voice.name.includes("Moira") ||
+              voice.localService === true) && // Prefer local voices on iOS
             voice.lang.startsWith("en")
         );
 
         if (preferredVoice) {
           utterance.voice = preferredVoice;
-          console.log("Using voice:", preferredVoice.name);
+          console.log(
+            "Using voice:",
+            preferredVoice.name,
+            "Local:",
+            preferredVoice.localService
+          );
         } else {
           // Fallback to first English voice
           const englishVoice = voices.find((voice) =>
@@ -48,7 +124,12 @@ export function useSpeechSynthesis() {
           );
           if (englishVoice) {
             utterance.voice = englishVoice;
-            console.log("Using fallback voice:", englishVoice.name);
+            console.log(
+              "Using fallback voice:",
+              englishVoice.name,
+              "Local:",
+              englishVoice.localService
+            );
           }
         }
       }
@@ -67,40 +148,86 @@ export function useSpeechSynthesis() {
     return utterance;
   };
 
-  const processQueue = () => {
-    if (isSpeaking.current || speechQueue.current.length === 0) {
+  const speakUtterance = (
+    utterance: SpeechSynthesisUtterance
+  ): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      let resolved = false;
+
+      const cleanup = () => {
+        if (!resolved) {
+          resolved = true;
+          isSpeaking.current = false;
+        }
+      };
+
+      utterance.onstart = () => {
+        console.log("Speech started:", utterance.text);
+      };
+
+      utterance.onend = () => {
+        console.log("Speech ended:", utterance.text);
+        cleanup();
+        resolve();
+      };
+
+      utterance.onerror = (event) => {
+        console.error("Speech error:", event);
+        cleanup();
+        reject(event);
+      };
+
+      // iOS Safari workaround: Resume if paused
+      if (speechSynthesis.paused) {
+        speechSynthesis.resume();
+      }
+
+      isSpeaking.current = true;
+      speechSynthesis.speak(utterance);
+
+      // iOS Safari workaround: Check if speaking started and force timeout
+      setTimeout(() => {
+        if (!speechSynthesis.speaking && !resolved) {
+          console.log("Speech failed to start within timeout");
+          cleanup();
+          reject(new Error("Speech failed to start"));
+        }
+      }, 1000); // Give iOS time to start speaking
+
+      // Safety timeout for iOS - sometimes onend doesn't fire
+      setTimeout(() => {
+        if (!resolved) {
+          console.log("Speech timeout - forcing completion");
+          cleanup();
+          resolve();
+        }
+      }, 10000); // 10 second max per utterance
+    });
+  };
+
+  const processQueue = async () => {
+    if (isProcessingQueue.current || speechQueue.current.length === 0) {
       return;
     }
 
-    const text = speechQueue.current.shift()!;
-    isSpeaking.current = true;
+    isProcessingQueue.current = true;
 
-    const utterance = createUtterance(text);
+    while (speechQueue.current.length > 0) {
+      const text = speechQueue.current.shift()!;
+      const utterance = createUtterance(text);
 
-    // Add event listeners
-    utterance.onstart = () => {
-      console.log("Speech started:", text);
-    };
+      try {
+        await speakUtterance(utterance);
+        // Add a small delay between utterances for iOS stability
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      } catch (error) {
+        console.error("Failed to speak text:", text, error);
+        // Continue with next item even if current failed
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
 
-    utterance.onend = () => {
-      console.log("Speech ended:", text);
-      isSpeaking.current = false;
-      // Process next item in queue after a small delay for Safari
-      setTimeout(() => {
-        processQueue();
-      }, 100);
-    };
-
-    utterance.onerror = (event) => {
-      console.error("Speech error:", event);
-      isSpeaking.current = false;
-      // Try to continue with next item in queue
-      setTimeout(() => {
-        processQueue();
-      }, 100);
-    };
-
-    speechSynthesis.speak(utterance);
+    isProcessingQueue.current = false;
   };
 
   const speakText = (text: string) => {
@@ -118,6 +245,7 @@ export function useSpeechSynthesis() {
     }
     speechQueue.current = [];
     isSpeaking.current = false;
+    isProcessingQueue.current = false;
 
     // Add to queue and process
     speechQueue.current.push(text);
@@ -156,6 +284,8 @@ export function useSpeechSynthesis() {
     speakFlush,
     speakText,
     speakRealtimeText,
+    testSpeechSynthesis,
+    initializeSpeechSynthesis,
     spokenTextLength,
     lastSpeechText,
   };

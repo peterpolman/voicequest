@@ -13,6 +13,7 @@ interface CharacterSetupPopupProps {
   character: Character;
   onSave: (character: Character) => void;
   onTestSpeechRecognition?: () => Promise<void>;
+  onTestSpeechSynthesis?: () => Promise<boolean>;
   onEnsureMicrophone?: () => Promise<void>;
 }
 
@@ -20,10 +21,14 @@ export default function CharacterSetupPopup({
   character,
   onSave,
   onTestSpeechRecognition,
+  onTestSpeechSynthesis,
   onEnsureMicrophone,
 }: CharacterSetupPopupProps) {
   const [formData, setFormData] = useState(character);
   const [speechStatus, setSpeechStatus] = useState<
+    "idle" | "testing" | "success" | "failed"
+  >("idle");
+  const [speechSynthStatus, setSpeechSynthStatus] = useState<
     "idle" | "testing" | "success" | "failed"
   >("idle");
   const [micStatus, setMicStatus] = useState<
@@ -57,6 +62,19 @@ export default function CharacterSetupPopup({
     } catch (error) {
       console.error("Speech recognition test failed:", error);
       setSpeechStatus("failed");
+    }
+  };
+
+  const handleTestSpeechSynthesis = async () => {
+    if (!onTestSpeechSynthesis) return;
+
+    setSpeechSynthStatus("testing");
+    try {
+      const success = await onTestSpeechSynthesis();
+      setSpeechSynthStatus(success ? "success" : "failed");
+    } catch (error) {
+      console.error("Speech synthesis test failed:", error);
+      setSpeechSynthStatus("failed");
     }
   };
 
@@ -142,7 +160,9 @@ export default function CharacterSetupPopup({
         </div>
 
         {/* iOS Speech Recognition Setup */}
-        {(onTestSpeechRecognition || onEnsureMicrophone) && (
+        {(onTestSpeechRecognition ||
+          onTestSpeechSynthesis ||
+          onEnsureMicrophone) && (
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>
               Voice Features (Required for iOS)
@@ -175,10 +195,25 @@ export default function CharacterSetupPopup({
                   {speechStatus === "failed" && "🗣️ Speech Failed"}
                 </button>
               )}
+
+              {onTestSpeechSynthesis && (
+                <button
+                  type="button"
+                  className={`${styles.voiceButton} ${styles[speechSynthStatus]}`}
+                  onClick={handleTestSpeechSynthesis}
+                  disabled={speechSynthStatus === "testing"}
+                >
+                  {speechSynthStatus === "idle" && "🔊 Test Speech Synthesis"}
+                  {speechSynthStatus === "testing" && "🔊 Testing..."}
+                  {speechSynthStatus === "success" && "🔊 Audio Ready"}
+                  {speechSynthStatus === "failed" && "🔊 Audio Failed"}
+                </button>
+              )}
             </div>
             <p className={styles.voiceHint}>
-              On iOS, tap these buttons to enable voice features. Use Safari for
-              best compatibility.
+              On iOS, tap these buttons to enable voice features. Test both
+              speech recognition and audio output. Use Safari for best
+              compatibility.
             </p>
           </div>
         )}

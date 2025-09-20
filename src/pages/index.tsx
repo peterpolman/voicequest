@@ -28,8 +28,14 @@ export default function AudioRPG() {
 
   // Custom hooks
   const { ensureMic, startSpeechRecognition } = useSpeechRecognition();
-  const { speakFlush, speakRealtimeText, spokenTextLength, lastSpeechText } =
-    useSpeechSynthesis();
+  const {
+    speakFlush,
+    speakRealtimeText,
+    initializeSpeechSynthesis,
+    testSpeechSynthesis,
+    spokenTextLength,
+    lastSpeechText,
+  } = useSpeechSynthesis();
   const { status, textStream, setStatus, sendAction } = useStoryStream();
 
   // Helper function to send text to story
@@ -49,6 +55,31 @@ export default function AudioRPG() {
     } catch (error) {
       console.error("Speech recognition test failed:", error);
       throw error; // Re-throw to let the UI handle the error state
+    }
+  };
+
+  // Test and initialize speech synthesis (especially for iOS)
+  const testSpeechSynthesisFunction = async () => {
+    try {
+      // Initialize speech synthesis first
+      const initSuccess = await initializeSpeechSynthesis();
+      console.log("Speech synthesis initialization:", initSuccess);
+
+      // Then test it
+      const testSuccess = await testSpeechSynthesis();
+      console.log("Speech synthesis test:", testSuccess);
+
+      if (testSuccess) {
+        // Play a test sentence if successful
+        speakRealtimeText(
+          "Speech synthesis is working correctly on your device."
+        );
+      }
+
+      return testSuccess;
+    } catch (error) {
+      console.error("Speech synthesis test failed:", error);
+      return false;
     }
   };
 
@@ -198,6 +229,7 @@ export default function AudioRPG() {
           character={character}
           onSave={saveCharacterFromForm}
           onTestSpeechRecognition={testSpeechRecognition}
+          onTestSpeechSynthesis={testSpeechSynthesisFunction}
           onEnsureMicrophone={ensureMic}
         />
       )}
