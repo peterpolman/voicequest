@@ -21,7 +21,8 @@
 .recordContainer {
   position: fixed;
   bottom: 2rem;
-  right: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 10;
 }
 
@@ -74,9 +75,11 @@
 
 .statusContainer {
   position: fixed;
-  bottom: 4rem;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 0rem;
+  left: 0;
+  right: 0;
+  width: auto;
+  background: rgba(255, 255, 255, 0.1);
   display: flex;
   gap: 1rem;
   align-items: center;
@@ -85,22 +88,19 @@
 
 .pill {
   display: inline-block;
-  padding: 0.5rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 999px;
-  font-size: 14px;
-  background: rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  margin: auto;
   backdrop-filter: blur(10px);
   font-family: "Pixelify Sans", monospace;
-  color: white;
+  color: gray;
 }
 
 .textToggle {
   position: fixed;
-  bottom: 2rem;
-  left: 2rem;
-  width: 100px;
-  height: 100px;
+  left: 1rem;
+  bottom: 3.5rem;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   border: none;
   background: rgba(255, 255, 255, 0.1);
@@ -261,6 +261,98 @@
 .micButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Voice Selector Styles */
+.voiceSelector {
+  margin: 1rem 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.voiceSelectorHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  font-family: "Pixelify Sans", monospace;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.voiceSelectorHeader:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.voiceToggleBtn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.2rem;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.voiceToggleBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.voiceOptions {
+  max-height: 120px;
+  overflow-y: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.voiceOption {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  background: none;
+  border: none;
+  color: white;
+  font-family: "Pixelify Sans", monospace;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.voiceOption:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.voiceOption.selected {
+  background: rgba(0, 150, 255, 0.2);
+  border-color: rgba(0, 150, 255, 0.3);
+}
+
+.voiceOption:last-child {
+  border-bottom: none;
+}
+
+.voiceSetupButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
 }
 
 .characterPopup {

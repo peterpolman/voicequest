@@ -6,6 +6,7 @@ export function useSpeechSynthesis(language: "en" | "nl" = "en") {
   const speechQueue = useRef<string[]>([]);
   const isSpeaking = useRef(false);
   const isProcessingQueue = useRef(false);
+  const selectedVoice = useRef<SpeechSynthesisVoice | null>(null);
 
   // Test function to validate speech synthesis on iOS
   const testSpeechSynthesis = (): Promise<boolean> => {
@@ -57,6 +58,23 @@ export function useSpeechSynthesis(language: "en" | "nl" = "en") {
     lastSpeechText.current = "";
   };
 
+  // Get available voices for the current language
+  const getAvailableVoices = (): SpeechSynthesisVoice[] => {
+    const voices = speechSynthesis.getVoices();
+    const languagePrefix = language === 'nl' ? 'nl' : 'en';
+    return voices.filter(voice => voice.lang.startsWith(languagePrefix));
+  };
+
+  // Set the preferred voice
+  const setPreferredVoice = (voice: SpeechSynthesisVoice | null) => {
+    selectedVoice.current = voice;
+  };
+
+  // Get currently selected voice
+  const getSelectedVoice = (): SpeechSynthesisVoice | null => {
+    return selectedVoice.current;
+  };
+
   // Initialize speech synthesis for iOS (must be called from user gesture)
   const initializeSpeechSynthesis = (): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -100,42 +118,50 @@ export function useSpeechSynthesis(language: "en" | "nl" = "en") {
 
       if (voices.length > 0) {
         let preferredVoice;
-
-        if (language === "nl") {
-          // Dutch voice preferences
-          preferredVoice = voices.find(
-            (voice) =>
-              (voice.name.includes("Ellen") ||
-                voice.name.includes("Xander") ||
-                voice.name.includes("Claire") ||
-                voice.localService === true) && // Prefer local voices on iOS
-              voice.lang.startsWith("nl")
-          );
-
-          if (!preferredVoice) {
-            // Fallback to any Dutch voice
-            preferredVoice = voices.find((voice) =>
-              voice.lang.startsWith("nl")
-            );
-          }
+        
+        // Use selected voice if available and matches language
+        if (selectedVoice.current && 
+            selectedVoice.current.lang.startsWith(language === 'nl' ? 'nl' : 'en')) {
+          preferredVoice = selectedVoice.current;
+          console.log("Using user-selected voice:", preferredVoice.name);
         } else {
-          // English voice preferences (existing logic)
-          preferredVoice = voices.find(
-            (voice) =>
-              (voice.name.includes("Samantha") ||
-                voice.name.includes("Alex") ||
-                voice.name.includes("Karen") ||
-                voice.name.includes("Daniel") ||
-                voice.name.includes("Moira") ||
-                voice.localService === true) && // Prefer local voices on iOS
-              voice.lang.startsWith("en")
-          );
-
-          if (!preferredVoice) {
-            // Fallback to any English voice
-            preferredVoice = voices.find((voice) =>
-              voice.lang.startsWith("en")
+          // Fallback to default language-specific preferences
+          if (language === "nl") {
+            // Dutch voice preferences
+            preferredVoice = voices.find(
+              (voice) =>
+                (voice.name.includes("Ellen") ||
+                  voice.name.includes("Xander") ||
+                  voice.name.includes("Claire") ||
+                  voice.localService === true) && // Prefer local voices on iOS
+                voice.lang.startsWith("nl")
             );
+
+            if (!preferredVoice) {
+              // Fallback to any Dutch voice
+              preferredVoice = voices.find((voice) =>
+                voice.lang.startsWith("nl")
+              );
+            }
+          } else {
+            // English voice preferences (existing logic)
+            preferredVoice = voices.find(
+              (voice) =>
+                (voice.name.includes("Samantha") ||
+                  voice.name.includes("Alex") ||
+                  voice.name.includes("Karen") ||
+                  voice.name.includes("Daniel") ||
+                  voice.name.includes("Moira") ||
+                  voice.localService === true) && // Prefer local voices on iOS
+                voice.lang.startsWith("en")
+            );
+
+            if (!preferredVoice) {
+              // Fallback to any English voice
+              preferredVoice = voices.find((voice) =>
+                voice.lang.startsWith("en")
+              );
+            }
           }
         }
 
@@ -306,6 +332,9 @@ export function useSpeechSynthesis(language: "en" | "nl" = "en") {
     speakRealtimeText,
     testSpeechSynthesis,
     initializeSpeechSynthesis,
+    getAvailableVoices,
+    setPreferredVoice,
+    getSelectedVoice,
     spokenTextLength,
     lastSpeechText,
   };

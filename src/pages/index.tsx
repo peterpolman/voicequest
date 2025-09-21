@@ -36,6 +36,9 @@ export default function AudioRPG() {
     speakRealtimeText,
     initializeSpeechSynthesis,
     testSpeechSynthesis,
+    getAvailableVoices,
+    setPreferredVoice,
+    getSelectedVoice,
     spokenTextLength,
     lastSpeechText,
   } = useSpeechSynthesis(character.language);
@@ -204,11 +207,11 @@ export default function AudioRPG() {
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="32"
-          height="32"
+          width="24"
+          height="24"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="currentColor"
+          stroke="gray"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -224,6 +227,11 @@ export default function AudioRPG() {
         onClose={() => setShowTextPopup(false)}
         onSendText={handleSendText}
         onEnsureMic={ensureMic}
+        onTestSpeechRecognition={testSpeechRecognition}
+        onTestSpeechSynthesis={testSpeechSynthesisFunction}
+        getAvailableVoices={getAvailableVoices}
+        setPreferredVoice={setPreferredVoice}
+        getSelectedVoice={getSelectedVoice}
       />
 
       {/* Character Setup Popup */}
@@ -231,8 +239,6 @@ export default function AudioRPG() {
         <CharacterSetupPopup
           character={character}
           onSave={saveCharacterFromForm}
-          onTestSpeechRecognition={testSpeechRecognition}
-          onTestSpeechSynthesis={testSpeechSynthesisFunction}
           onEnsureMicrophone={ensureMic}
         />
       )}
