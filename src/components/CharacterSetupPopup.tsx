@@ -9,7 +9,6 @@ export interface Character {
   language: "en" | "nl";
 }
 
-// Character Setup Component
 interface CharacterSetupPopupProps {
   character: Character;
   onSave: (character: Character) => void;
@@ -23,31 +22,36 @@ export default function CharacterSetupPopup({
 }: CharacterSetupPopupProps) {
   const [formData, setFormData] = useState(character);
 
+  const updateField = (field: keyof Character, value: string | "en" | "nl") => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const processTraits = (traits: string[] | string): string[] => {
+    return typeof traits === "string"
+      ? traits
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : traits;
+  };
+
   const handleSubmit = async () => {
     // Ensure microphone access before starting adventure
-    if (onEnsureMicrophone) {
-      try {
-        await onEnsureMicrophone();
-      } catch (error) {
-        console.error("Microphone access failed:", error);
-        // Continue anyway - user can enable in settings later
-      }
+    try {
+      await onEnsureMicrophone?.();
+    } catch (error) {
+      console.error("Microphone access failed:", error);
+      // Continue anyway - user can enable in settings later
     }
 
-    const processedCharacter = {
-      ...formData,
-      name: formData.name.trim() || "Unknown",
-      class: formData.class.trim() || "Adventurer",
-      traits:
-        typeof formData.traits === "string"
-          ? formData.traits
-              .split(",")
-              .map((t) => t.trim())
-              .filter((t) => t)
-          : formData.traits,
-      backstory: formData.backstory.trim() || "A mysterious adventurer.",
-      language: formData.language || "en",
+    const processedCharacter: Character = {
+      name: formData.name.trim(),
+      class: formData.class.trim(),
+      traits: processTraits(formData.traits),
+      backstory: formData.backstory.trim(),
+      language: formData.language,
     };
+
     onSave(processedCharacter);
   };
 
@@ -67,9 +71,10 @@ export default function CharacterSetupPopup({
             className={styles.formInput}
             placeholder="Enter your character's name"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => updateField("name", e.target.value)}
           />
         </div>
+
         <div className={styles.formGroup}>
           <label className={styles.formLabel} htmlFor="charClass">
             Class
@@ -80,11 +85,10 @@ export default function CharacterSetupPopup({
             className={styles.formInput}
             placeholder="e.g., Rogue, Warrior, Mage"
             value={formData.class}
-            onChange={(e) =>
-              setFormData({ ...formData, class: e.target.value })
-            }
+            onChange={(e) => updateField("class", e.target.value)}
           />
         </div>
+
         <div className={styles.formGroup}>
           <label className={styles.formLabel} htmlFor="charTraits">
             Traits (comma-separated)
@@ -99,11 +103,10 @@ export default function CharacterSetupPopup({
                 ? formData.traits.join(", ")
                 : formData.traits
             }
-            onChange={(e) =>
-              setFormData({ ...formData, traits: e.target.value })
-            }
+            onChange={(e) => updateField("traits", e.target.value)}
           />
         </div>
+
         <div className={styles.formGroup}>
           <label className={styles.formLabel} htmlFor="charBackstory">
             Backstory
@@ -113,9 +116,7 @@ export default function CharacterSetupPopup({
             className={styles.formTextarea}
             placeholder="Tell us about your character's background..."
             value={formData.backstory}
-            onChange={(e) =>
-              setFormData({ ...formData, backstory: e.target.value })
-            }
+            onChange={(e) => updateField("backstory", e.target.value)}
           />
         </div>
 
@@ -128,10 +129,7 @@ export default function CharacterSetupPopup({
             className={styles.formInput}
             value={formData.language}
             onChange={(e) =>
-              setFormData({
-                ...formData,
-                language: e.target.value as "en" | "nl",
-              })
+              updateField("language", e.target.value as "en" | "nl")
             }
           >
             <option value="en">🇺🇸 English</option>

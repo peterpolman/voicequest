@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import styles from "../styles/AudioRPG.module.css";
 
 interface RecordButtonProps {
@@ -11,38 +12,52 @@ export default function RecordButton({
   onStartRecording,
   onStopRecording,
 }: RecordButtonProps) {
+  // Unified event handler for press start
+  const handlePressStart = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault();
+      if (!isRecording) {
+        onStartRecording();
+      }
+    },
+    [isRecording, onStartRecording]
+  );
+
+  // Unified event handler for press end
+  const handlePressEnd = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault();
+      if (isRecording) {
+        onStopRecording();
+      }
+    },
+    [isRecording, onStopRecording]
+  );
+
+  // Prevent click events from bubbling
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
   return (
     <div className={styles.recordContainer}>
       <button
         className={`${styles.recordButton} ${
           isRecording ? styles.recording : ""
         }`}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          onStartRecording();
-        }}
-        onMouseUp={(e) => {
-          e.preventDefault();
-          onStopRecording();
-        }}
-        onTouchStart={(e) => {
-          e.preventDefault();
-          onStartRecording();
-        }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          onStopRecording();
-        }}
-        onTouchCancel={(e) => {
-          e.preventDefault();
-          onStopRecording();
-        }}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
+        onMouseDown={handlePressStart}
+        onMouseUp={handlePressEnd}
+        onTouchStart={handlePressStart}
+        onTouchEnd={handlePressEnd}
+        onTouchCancel={handlePressEnd}
+        onClick={handleClick}
+        type="button"
+        aria-label={
+          isRecording ? "Recording... Release to stop" : "Hold to record"
+        }
       >
-        <div className={styles.recordIcon}></div>
+        <div className={styles.recordIcon} />
       </button>
     </div>
   );

@@ -61,8 +61,8 @@ export function useSpeechSynthesis(language: "en" | "nl" = "en") {
   // Get available voices for the current language
   const getAvailableVoices = (): SpeechSynthesisVoice[] => {
     const voices = speechSynthesis.getVoices();
-    const languagePrefix = language === 'nl' ? 'nl' : 'en';
-    return voices.filter(voice => voice.lang.startsWith(languagePrefix));
+    const languagePrefix = language === "nl" ? "nl" : "en";
+    return voices.filter((voice) => voice.lang.startsWith(languagePrefix));
   };
 
   // Set the preferred voice
@@ -118,10 +118,12 @@ export function useSpeechSynthesis(language: "en" | "nl" = "en") {
 
       if (voices.length > 0) {
         let preferredVoice;
-        
+
         // Use selected voice if available and matches language
-        if (selectedVoice.current && 
-            selectedVoice.current.lang.startsWith(language === 'nl' ? 'nl' : 'en')) {
+        if (
+          selectedVoice.current &&
+          selectedVoice.current.lang.startsWith(language === "nl" ? "nl" : "en")
+        ) {
           preferredVoice = selectedVoice.current;
           console.log("Using user-selected voice:", preferredVoice.name);
         } else {
