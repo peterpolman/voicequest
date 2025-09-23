@@ -1,5 +1,6 @@
 import {
   CharacterSetupPopup,
+  InventoryPopup,
   RecordButton,
   SettingsPopup,
   type Character,
@@ -30,6 +31,25 @@ const GearIcon = () => (
   </svg>
 );
 
+// Bag inventory icon component
+const BagIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="gray"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+    <path d="M3 6h18" />
+    <path d="M16 10a4 4 0 0 1-8 0" />
+  </svg>
+);
+
 // Default character configuration
 const DEFAULT_CHARACTER: Character = {
   name: "Unknown",
@@ -44,6 +64,7 @@ export default function AudioRPG() {
   const [character, setCharacter] = useState<Character>(DEFAULT_CHARACTER);
   const [showCharacterPopup, setShowCharacterPopup] = useState(true);
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
+  const [showInventoryPopup, setShowInventoryPopup] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
 
   const sessionId = useRef(new Date().getTime().toString());
@@ -63,7 +84,8 @@ export default function AudioRPG() {
     spokenTextLength,
     lastSpeechText,
   } = useSpeechSynthesis(character.language);
-  const { status, textStream, setStatus, sendAction } = useStoryStream();
+  const { status, textStream, inventory, setStatus, sendAction } =
+    useStoryStream();
 
   // Core action handler
   const sendTextToStory = useCallback(
@@ -156,6 +178,10 @@ export default function AudioRPG() {
     setShowSettingsPopup((prev) => !prev);
   }, []);
 
+  const toggleInventoryPopup = useCallback(() => {
+    setShowInventoryPopup((prev) => !prev);
+  }, []);
+
   // Initialize voices and check browser support
   useEffect(() => {
     const initializeVoices = () => {
@@ -213,6 +239,19 @@ export default function AudioRPG() {
       <button className={styles.textToggle} onClick={toggleSettingsPopup}>
         <GearIcon />
       </button>
+
+      {/* Inventory Toggle (above settings) */}
+      <button className={styles.inventoryButton} onClick={toggleInventoryPopup}>
+        <BagIcon />
+      </button>
+
+      {/* Inventory Popup */}
+      <InventoryPopup
+        isVisible={showInventoryPopup}
+        onClose={() => setShowInventoryPopup(false)}
+        inventory={inventory}
+        language={character.language}
+      />
 
       {/* Settings Popup */}
       <SettingsPopup

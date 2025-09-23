@@ -1,9 +1,36 @@
 import { useRef, useState } from "react";
 import { Character } from "../components/CharacterSetupPopup";
 
+// Helper function to remove game state content from text for display and speech
+function removeGameStateContent(text: string): string {
+  // Remove game state lines at the end
+  const gameStatePatterns = [
+    /\n?GAME_STATE:\s*\{[^}]*\}\s*$/gi,
+    /\n?\{[^}]*"inventory"[^}]*\}\s*$/g,
+    /\n?STATE_OPS:\s*\[[\s\S]*?\]\s*$/gi,
+    /\n?PATCH_BUNDLE:\s*\{[\s\S]*\}\s*$/gi,
+  ];
+
+  let cleanText = text;
+  for (const pattern of gameStatePatterns) {
+    const beforeClean = cleanText;
+    cleanText = cleanText.replace(pattern, "");
+    if (beforeClean !== cleanText) {
+      console.log(
+        "Removed game state content:",
+        beforeClean.length - cleanText.length,
+        "characters"
+      );
+    }
+  }
+
+  return cleanText.trim();
+}
+
 export function useStoryStream() {
   const [status, setStatus] = useState("Ready");
   const [textStream, setTextStream] = useState("");
+  const [inventory, setInventory] = useState<Record<string, number>>({});
   const lastFullScene = useRef("");
 
   const streamText = async (
@@ -24,7 +51,6 @@ export function useStoryStream() {
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
-    let speechBuffer = "";
 
     while (true) {
       const { value, done } = await reader.read();
@@ -44,12 +70,28 @@ export function useStoryStream() {
           }
           if (payload.type === "delta") {
             lastFullScene.current += payload.text;
-            speechBuffer += payload.text;
-            setTextStream(lastFullScene.current);
 
-            // Call the callback for real-time speech
+            // Clean the accumulated text for display and speech (remove game state)
+            const cleanText = removeGameStateContent(lastFullScene.current);
+            setTextStream(cleanText);
+
+            // Call the callback for real-time speech with cleaned content
             if (onTextUpdate) {
-              onTextUpdate(speechBuffer);
+              onTextUpdate(cleanText);
+            }
+          }
+          if (payload.type === "gameState") {
+            // Update inventory when game state is received (array -> record mapping)
+            const inv = payload.state?.inventory as
+              | Array<{ id: string; qty: number }>
+              | undefined;
+            if (Array.isArray(inv)) {
+              const mapped: Record<string, number> = {};
+              for (const it of inv) {
+                if (it && typeof it.id === "string")
+                  mapped[it.id] = Number(it.qty ?? 0);
+              }
+              setInventory(mapped);
             }
           }
         } catch (parseError) {
@@ -89,6 +131,7 @@ export function useStoryStream() {
   return {
     status,
     textStream,
+    inventory,
     setStatus,
     sendAction,
     lastFullScene,
