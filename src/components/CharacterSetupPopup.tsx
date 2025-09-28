@@ -7,6 +7,18 @@ export interface Character {
   traits: string[] | string;
   backstory: string;
   language: "en" | "nl";
+  skills: {
+    sword: number;
+    alchemy: number;
+    stealth: number;
+    athletics: number;
+    lockpicking: number;
+  };
+  // Optional fields not configured via the form
+  hp?: number;
+  maxHp?: number;
+  level?: number;
+  xp?: number;
 }
 
 interface CharacterSetupPopupProps {
@@ -20,10 +32,22 @@ export default function CharacterSetupPopup({
   onSave,
   onEnsureMicrophone,
 }: CharacterSetupPopupProps) {
-  const [formData, setFormData] = useState(character);
+  const initialSkills = character.skills;
+  const [formData, setFormData] = useState<Character>({
+    ...character,
+    skills: initialSkills,
+  });
 
-  const updateField = (field: keyof Character, value: string | "en" | "nl") => {
+  const updateField = (field: keyof Character, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateSkill = (skill: keyof Character["skills"], value: number) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+    setFormData((prev) => ({
+      ...prev,
+      skills: { ...prev.skills, [skill]: clamped },
+    }));
   };
 
   const processTraits = (traits: string[] | string): string[] => {
@@ -50,10 +74,48 @@ export default function CharacterSetupPopup({
       traits: processTraits(formData.traits),
       backstory: formData.backstory.trim(),
       language: formData.language,
+      skills: {
+        sword: Math.max(0, Math.min(100, Math.round(formData.skills.sword))),
+        alchemy: Math.max(
+          0,
+          Math.min(100, Math.round(formData.skills.alchemy))
+        ),
+        stealth: Math.max(
+          0,
+          Math.min(100, Math.round(formData.skills.stealth))
+        ),
+        athletics: Math.max(
+          0,
+          Math.min(100, Math.round(formData.skills.athletics))
+        ),
+        lockpicking: Math.max(
+          0,
+          Math.min(100, Math.round(formData.skills.lockpicking))
+        ),
+      },
     };
 
     onSave(processedCharacter);
   };
+
+  const renderSkillSlider = (label: string, key: keyof Character["skills"]) => (
+    <div className={styles.skillRow}>
+      <div className={styles.skillHeader}>
+        <span className={styles.skillLabel}>{label}</span>
+        <span className={styles.skillValue}>{formData.skills[key]}</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={1}
+        value={formData.skills[key]}
+        onChange={(e) => updateSkill(key, Number(e.target.value))}
+        className={styles.skillSlider}
+        aria-label={`${label} skill level`}
+      />
+    </div>
+  );
 
   return (
     <div className={styles.characterPopup}>
@@ -135,6 +197,17 @@ export default function CharacterSetupPopup({
             <option value="en">🇺🇸 English</option>
             <option value="nl">🇳🇱 Nederlands</option>
           </select>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Skills</label>
+          <div className={styles.skillsContainer}>
+            {renderSkillSlider("Sword", "sword")}
+            {renderSkillSlider("Alchemy", "alchemy")}
+            {renderSkillSlider("Stealth", "stealth")}
+            {renderSkillSlider("Athletics", "athletics")}
+            {renderSkillSlider("Lockpicking", "lockpicking")}
+          </div>
         </div>
 
         <button className={styles.startButton} onClick={handleSubmit}>

@@ -13,26 +13,22 @@ interface VoiceFeatures {
   getSelectedVoice?: () => SpeechSynthesisVoice | null;
 }
 
-interface TextPopupProps extends VoiceFeatures {
+interface SettingsPopupProps extends VoiceFeatures {
   isVisible: boolean;
   onClose: () => void;
-  onSendText: (text: string) => void;
 }
 
-export default function TextPopup({
+export default function SettingsPopup({
   isVisible,
   onClose,
-  onSendText,
   ...voiceFeatures
-}: TextPopupProps) {
-  const [textInput, setTextInput] = useState("");
+}: SettingsPopupProps) {
   const [micStatus, setMicStatus] = useState<MicStatus>("idle");
   const [speechStatus, setSpeechStatus] = useState<TestStatus>("idle");
-  const [speechSynthStatus, setSpeechSynthStatus] =
-    useState<TestStatus>("idle");
-  const [availableVoices, setAvailableVoices] = useState<
-    SpeechSynthesisVoice[]
-  >([]);
+  const [speechSynthStatus, setSpeechSynthStatus] = useState<TestStatus>("idle");
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>(
+    []
+  );
   const [showVoiceSelector, setShowVoiceSelector] = useState(false);
 
   const {
@@ -52,11 +48,9 @@ export default function TextPopup({
     updateVoices();
 
     speechSynthesis.addEventListener("voiceschanged", updateVoices);
-    return () =>
-      speechSynthesis.removeEventListener("voiceschanged", updateVoices);
+    return () => speechSynthesis.removeEventListener("voiceschanged", updateVoices);
   }, [getAvailableVoices]);
 
-  // Simplified test handlers
   const runTest = async (
     testFn: (() => Promise<void>) | (() => Promise<boolean>) | undefined,
     setStatus: (status: TestStatus) => void
@@ -86,24 +80,13 @@ export default function TextPopup({
     }
   };
 
-  // Simplified handlers
-  const handleSendText = () => {
-    const action = textInput.trim();
-    if (action) {
-      onSendText(action);
-      setTextInput("");
-    }
-  };
-
   const handleVoiceSelect = (voice: SpeechSynthesisVoice | null) => {
     setPreferredVoice?.(voice);
     setShowVoiceSelector(false);
   };
 
-  const getCurrentVoiceName = () =>
-    getSelectedVoice?.()?.name || "System Default";
+  const getCurrentVoiceName = () => getSelectedVoice?.()?.name || "System Default";
 
-  // Simple test button component
   const TestButton = ({
     testFn,
     status,
@@ -162,68 +145,56 @@ export default function TextPopup({
       }}
     >
       <div className={styles.popupHeader}>
-        <span>Describe your action</span>
+        <span>Settings</span>
         <button className={styles.closeBtn} onClick={onClose}>
           ×
         </button>
       </div>
       <div className={styles.popupContent}>
-        <textarea
-          className={styles.textInput}
-          placeholder="Type your action here..."
-          value={textInput}
-          onChange={(e) => setTextInput(e.target.value)}
-          autoFocus
-        />
-
         {/* Voice Selector */}
-        {getAvailableVoices &&
-          setPreferredVoice &&
-          availableVoices.length > 0 && (
-            <div className={styles.voiceSelector}>
-              <div
-                className={styles.voiceSelectorHeader}
-                onClick={() => setShowVoiceSelector(!showVoiceSelector)}
-              >
-                <span>🔊 Voice: {getCurrentVoiceName()}</span>
-                <button className={styles.voiceToggleBtn}>
-                  {showVoiceSelector ? "▲" : "▼"}
-                </button>
-              </div>
-              {showVoiceSelector && (
-                <div className={styles.voiceOptions}>
-                  <button
-                    className={`${styles.voiceOption} ${
-                      !getSelectedVoice?.() ? styles.selected : ""
-                    }`}
-                    onClick={() => handleVoiceSelect(null)}
-                  >
-                    System Default
-                  </button>
-                  {availableVoices.map((voice, index) => (
-                    <button
-                      key={`${voice.name}-${index}`}
-                      className={`${styles.voiceOption} ${
-                        getSelectedVoice?.()?.name === voice.name
-                          ? styles.selected
-                          : ""
-                      }`}
-                      onClick={() => handleVoiceSelect(voice)}
-                    >
-                      {voice.name} {voice.localService ? "📱" : "☁️"}
-                    </button>
-                  ))}
-                </div>
-              )}
+        {getAvailableVoices && setPreferredVoice && availableVoices.length > 0 && (
+          <div className={styles.voiceSelector}>
+            <div
+              className={styles.voiceSelectorHeader}
+              onClick={() => setShowVoiceSelector(!showVoiceSelector)}
+            >
+              <span>🔊 Voice: {getCurrentVoiceName()}</span>
+              <button className={styles.voiceToggleBtn}>
+                {showVoiceSelector ? "▲" : "▼"}
+              </button>
             </div>
-          )}
+            {showVoiceSelector && (
+              <div className={styles.voiceOptions}>
+                <button
+                  className={`${styles.voiceOption} ${
+                    !getSelectedVoice?.() ? styles.selected : ""
+                  }`}
+                  onClick={() => handleVoiceSelect(null)}
+                >
+                  System Default
+                </button>
+                {availableVoices.map((voice, index) => (
+                  <button
+                    key={`${voice.name}-${index}`}
+                    className={`${styles.voiceOption} ${
+                      getSelectedVoice?.()?.name === voice.name
+                        ? styles.selected
+                        : ""
+                    }`}
+                    onClick={() => handleVoiceSelect(voice)}
+                  >
+                    {voice.name} {voice.localService ? "📱" : "☁️"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Voice Features Setup for iOS */}
         {(onTestSpeechRecognition || onTestSpeechSynthesis || onEnsureMic) && (
           <div className={styles.voiceSetupContainer}>
-            <div className={styles.formLabel}>
-              Voice Features (Required for iOS)
-            </div>
+            <div className={styles.formLabel}>Voice Features (Required for iOS)</div>
             <div className={styles.voiceSetupButtons}>
               {onEnsureMic && <MicButton />}
               {onTestSpeechRecognition && (
@@ -246,18 +217,11 @@ export default function TextPopup({
               )}
             </div>
             <p className={styles.voiceHint}>
-              On iOS, tap these buttons to enable voice features. Test both
-              speech recognition and audio output. Use Safari for best
-              compatibility.
+              On iOS, tap these buttons to enable voice features. Test both speech
+              recognition and audio output. Use Safari for best compatibility.
             </p>
           </div>
         )}
-
-        <div className={styles.popupActions}>
-          <button className={styles.sendButton} onClick={handleSendText}>
-            Send
-          </button>
-        </div>
       </div>
     </div>
   );

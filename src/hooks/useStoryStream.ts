@@ -1,41 +1,19 @@
 import { useRef, useState } from "react";
-import { Character } from "../components/CharacterSetupPopup";
-
-// Helper function to remove game state content from text for display and speech
-function removeGameStateContent(text: string): string {
-  // Remove game state lines at the end
-  const gameStatePatterns = [
-    /\n?GAME_STATE:\s*\{[^}]*\}\s*$/gi,
-    /\n?\{[^}]*"inventory"[^}]*\}\s*$/g,
-    /\n?STATE_OPS:\s*\[[\s\S]*?\]\s*$/gi,
-    /\n?PATCH_BUNDLE:\s*\{[\s\S]*\}\s*$/gi,
-  ];
-
-  let cleanText = text;
-  for (const pattern of gameStatePatterns) {
-    const beforeClean = cleanText;
-    cleanText = cleanText.replace(pattern, "");
-    if (beforeClean !== cleanText) {
-      console.log(
-        "Removed game state content:",
-        beforeClean.length - cleanText.length,
-        "characters"
-      );
-    }
-  }
-
-  return cleanText.trim();
-}
+import type { Character } from "@/components";
+import type { Player } from "@/types";
 
 export function useStoryStream() {
   const [status, setStatus] = useState("Ready");
   const [textStream, setTextStream] = useState("");
   const [inventory, setInventory] = useState<Record<string, number>>({});
+  const [player, setPlayer] = useState<Player | null>(null);
+  const [location, setLocation] = useState<Player["location"] | null>(null);
+  const [nextActions, setNextActions] = useState<string[]>([]);
   const lastFullScene = useRef("");
 
   const streamText = async (
     payload: any,
-    onTextUpdate?: (text: string) => void
+    onTextUpdate: (text: string) => void
   ) => {
     const resp = await fetch("/api/text-stream", {
       method: "POST",
@@ -63,40 +41,31 @@ export function useStoryStream() {
         buffer = buffer.slice(idx + 2);
         if (!rawEvent.startsWith("data:")) continue;
 
-        try {
-          const payload = JSON.parse(rawEvent.slice(5).trim());
-          if (payload.type === "status") {
-            setStatus(payload.message);
-          }
-          if (payload.type === "delta") {
-            lastFullScene.current += payload.text;
-
-            // Clean the accumulated text for display and speech (remove game state)
-            const cleanText = removeGameStateContent(lastFullScene.current);
-            setTextStream(cleanText);
-
-            // Call the callback for real-time speech with cleaned content
-            if (onTextUpdate) {
-              onTextUpdate(cleanText);
-            }
-          }
-          if (payload.type === "gameState") {
-            // Update inventory when game state is received (array -> record mapping)
-            const inv = payload.state?.inventory as
-              | Array<{ id: string; qty: number }>
-              | undefined;
-            if (Array.isArray(inv)) {
-              const mapped: Record<string, number> = {};
-              for (const it of inv) {
-                if (it && typeof it.id === "string")
-                  mapped[it.id] = Number(it.qty ?? 0);
-              }
-              setInventory(mapped);
-            }
-          }
-        } catch (parseError) {
-          console.error("Failed to parse SSE event:", parseError);
+        const payload = JSON.parse(rawEvent.slice(5).trim());
+        if (payload.type === "status") {
+          setStatus(payload.message);
         }
+        if (payload.type === "delta") {
+          lastFullScene.current += payload.text;
+          setTextStream(lastFullScene.current);
+          // Call the callback for real-time speech with cleaned content
+          onTextUpdate(lastFullScene.current);
+        }
+        if (payload.type === "state") {
+          // Update inventory when game state is received (array -> record mapping)
+          const { inventory } = payload.state.player;
+          const mapped: Record<string, number> = {};
+          for (const item of inventory) {
+            const qty = Number(item.qty ?? 0);
+            if (qty <= 0) continue;
+            mapped[item.id] = (mapped[item.id] ?? 0) + qty;
+          }
+          setNextActions(payload.nextActions || []);
+          setPlayer(payload.state.player);
+          setLocation(payload.state.player?.location ?? null);
+          setInventory(mapped);
+        }
+        console.log(payload);
       }
     }
 
@@ -108,11 +77,12 @@ export function useStoryStream() {
     sessionId: string,
     character: Character,
     action: string,
-    onTextUpdate?: (text: string) => void
+    onTextUpdate: (text: string) => void
   ) => {
     setStatus("Generating story...");
     setTextStream("");
     lastFullScene.current = "";
+    setNextActions([]); // clear any previous suggestions
 
     const payload = {
       sessionId,
@@ -128,12 +98,18 @@ export function useStoryStream() {
     }
   };
 
+  const clearNextActions = () => setNextActions([]);
+
   return {
     status,
     textStream,
     inventory,
+    player,
+    location,
+    nextActions,
     setStatus,
     sendAction,
     lastFullScene,
+    clearNextActions,
   };
 }

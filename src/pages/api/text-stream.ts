@@ -1,8 +1,8 @@
 import { buildPrompt } from "@/utils/prompt";
-import fastJsonPatch from "fast-json-patch";
+import FastJsonPatch from "fast-json-patch";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { default as OpenAI } from "openai";
-import { getOrCreateSession } from "../../utils/sessions";
+import { getOrCreateSession, updateSessionState } from "../../utils/sessions";
 import { updateSummary } from "../../utils/summarizer";
 
 // Configuration
@@ -40,7 +40,34 @@ export default async function handler(
 
     const session = getOrCreateSession(sessionId);
 
-    let fullScene = "";
+    // Apply character-provided name and skills to the session before prompting
+    try {
+      if (character?.name && typeof character.name === "string") {
+        session.state.player.name = String(character.name).slice(0, 40);
+      }
+      if (character?.skills && typeof character.skills === "object") {
+        const keys = [
+          "sword",
+          "alchemy",
+          "stealth",
+          "athletics",
+          "lockpicking",
+        ] as const;
+        for (const k of keys) {
+          const raw = Number(character.skills[k]);
+          if (!Number.isNaN(raw)) {
+            const clamped = Math.max(0, Math.min(100, Math.round(raw)));
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            session.state.player.skills[k] = clamped;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to apply character fields to session:", e);
+    }
+
+    let scene = "";
 
     // Stream response from OpenAI
     const { systemPrompt, userPrompt } = buildPrompt({
@@ -66,31 +93,42 @@ export default async function handler(
       stream: true,
     });
 
+    let isEnded = false;
     for await (const chunk of stream) {
       const delta = chunk.choices?.[0]?.delta?.content;
       if (delta) {
-        fullScene += delta;
-        sseWrite(res, { type: "delta", text: delta });
+        scene += delta;
+        if (!isEnded) {
+          isEnded = !!delta.match(/```/);
+          if (!isEnded) sseWrite(res, { type: "delta", text: delta });
+        }
       }
     }
 
     // Extract and parse JSON patch bundle from the response
-    const jsonMatch = fullScene.match(/```json\s*([\s\S]*?)\s*```/);
+    const jsonMatch = scene.match(/```json\s*([\s\S]*?)\s*```/);
     if (jsonMatch) {
       try {
-        const patchBundle = JSON.parse(jsonMatch[1]);
-        console.log(patchBundle);
+        const data = JSON.parse(jsonMatch[1]);
+        const { patch, mechanics, next_actions: nextActions } = data;
 
         // Apply patch to session state
-        fastJsonPatch.applyPatch(session.state, patchBundle.patch, true, false);
-
-        console.log(JSON.stringify(session.state));
+        if (patch.length) {
+          const patchedState = FastJsonPatch.applyPatch(
+            session.state,
+            patch,
+            true,
+            false
+          );
+          updateSessionState(sessionId, patchedState.newDocument);
+        }
 
         // Send updated game state to client
         sseWrite(res, {
-          type: "gameState",
+          type: "state",
           state: session.state,
-          inventory: session.state.player.inventory || [],
+          mechanics,
+          nextActions,
         });
       } catch (error) {
         console.error("Failed to parse JSON patch bundle:", error);
@@ -100,15 +138,11 @@ export default async function handler(
         });
       }
     }
+    console.log(scene);
+    console.log(session.state);
 
     // Update session with new content
-    await updateSession(
-      session,
-      { action, scene: fullScene },
-      character.language as "en" | "nl"
-    );
-
-    sseWrite(res, { type: "done" });
+    await updateSession(session, { action, scene });
     res.end();
   } catch (error) {
     console.error("Text Stream Error:", error);
@@ -118,11 +152,7 @@ export default async function handler(
 }
 
 // Helper function to update session state
-async function updateSession(
-  session: any,
-  exchange: any,
-  language: "en" | "nl"
-) {
+async function updateSession(session: any, exchange: any) {
   session.lastScene = exchange.scene;
   session.recent.push(exchange);
 
@@ -136,11 +166,7 @@ async function updateSession(
       oldSummary: session.summary,
       recent: session.recent,
       state: session.state,
-      language,
     });
     session.recent = [];
   }
-
-  console.log("Session summary:", session.summary);
-  console.log("Session state:", session.state);
 }

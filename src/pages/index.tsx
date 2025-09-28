@@ -3,6 +3,7 @@ import {
   InventoryPopup,
   RecordButton,
   SettingsPopup,
+  TextInputPopup,
   type Character,
 } from "@/components";
 import {
@@ -50,6 +51,25 @@ const BagIcon = () => (
   </svg>
 );
 
+// Text input icon component
+const TextIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="gray"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M4 7V5h16v2" />
+    <path d="M9 20h6" />
+    <path d="M12 4v16" />
+  </svg>
+);
+
 // Default character configuration
 const DEFAULT_CHARACTER: Character = {
   name: "Unknown",
@@ -57,6 +77,13 @@ const DEFAULT_CHARACTER: Character = {
   traits: ["mysterious", "brave", "curious"],
   backstory: "A mysterious adventurer.",
   language: "en",
+  skills: {
+    sword: 50,
+    alchemy: 50,
+    stealth: 50,
+    athletics: 50,
+    lockpicking: 50,
+  },
 };
 
 export default function AudioRPG() {
@@ -65,6 +92,7 @@ export default function AudioRPG() {
   const [showCharacterPopup, setShowCharacterPopup] = useState(true);
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const [showInventoryPopup, setShowInventoryPopup] = useState(false);
+  const [showTextInputPopup, setShowTextInputPopup] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
 
   const sessionId = useRef(new Date().getTime().toString());
@@ -83,9 +111,18 @@ export default function AudioRPG() {
     getSelectedVoice,
     spokenTextLength,
     lastSpeechText,
-  } = useSpeechSynthesis(character.language);
-  const { status, textStream, inventory, setStatus, sendAction } =
-    useStoryStream();
+  } = useSpeechSynthesis("en");
+  const {
+    status,
+    textStream,
+    inventory,
+    player,
+    location,
+    nextActions,
+    clearNextActions,
+    setStatus,
+    sendAction,
+  } = useStoryStream();
 
   // Core action handler
   const sendTextToStory = useCallback(
@@ -166,20 +203,16 @@ export default function AudioRPG() {
     [setStatus]
   );
 
-  const handleSendText = useCallback(
-    async (text: string) => {
-      await sendTextToStory(text);
-      setShowSettingsPopup(false);
-    },
-    [sendTextToStory]
-  );
-
   const toggleSettingsPopup = useCallback(() => {
     setShowSettingsPopup((prev) => !prev);
   }, []);
 
   const toggleInventoryPopup = useCallback(() => {
     setShowInventoryPopup((prev) => !prev);
+  }, []);
+
+  const toggleTextInputPopup = useCallback(() => {
+    setShowTextInputPopup((prev) => !prev);
   }, []);
 
   // Initialize voices and check browser support
@@ -218,12 +251,36 @@ export default function AudioRPG() {
     return () => document.removeEventListener("mouseup", handleGlobalMouseUp);
   }, [isRecording, stopRecording]);
 
+  const handleSuggestion = useCallback(
+    async (suggestion: string) => {
+      clearNextActions();
+      await sendTextToStory(suggestion);
+    },
+    [clearNextActions, sendTextToStory]
+  );
+
   return (
     <>
       {/* Full Window Text Stream */}
       <div className={styles.textStream}>{textStream}</div>
 
-      {/* Record Button (bottom right) */}
+      {/* Next Actions (suggestions) */}
+      {nextActions.length > 0 && (
+        <div className={styles.nextActionsBar}>
+          {nextActions.map((actionText, idx) => (
+            <button
+              key={`${idx}-${actionText}`}
+              className={styles.nextActionBtn}
+              onClick={() => handleSuggestion(actionText)}
+              title={actionText}
+            >
+              {actionText}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Record Button (bottom center) */}
       <RecordButton
         isRecording={isRecording}
         onStartRecording={startRecording}
@@ -240,9 +297,47 @@ export default function AudioRPG() {
         <GearIcon />
       </button>
 
+      {/* Text Input Toggle (next to inventory) */}
+      <button
+        className={styles.actionInputButton}
+        onClick={toggleTextInputPopup}
+        aria-label="Open text input"
+        title="Type an action"
+      >
+        <TextIcon />
+      </button>
+
+      <div className={styles.hpDisplay}>
+        <span>
+          {player?.hp ?? 0} / {player?.maxHp ?? 0} HP
+        </span>
+        <br />
+        <span>
+          {typeof location === "string" ? location : location?.area ?? ""}
+        </span>
+      </div>
+
+      <span className={styles.locationDisplay}></span>
+
       {/* Inventory Toggle (above settings) */}
-      <button className={styles.inventoryButton} onClick={toggleInventoryPopup}>
+      <button
+        className={styles.inventoryButton}
+        onClick={toggleInventoryPopup}
+        aria-label={`Open inventory (${Object.values(inventory).reduce(
+          (a, b) => a + b,
+          0
+        )})`}
+        title={`Inventory: ${Object.values(inventory).reduce(
+          (a, b) => a + b,
+          0
+        )} item(s)`}
+      >
         <BagIcon />
+        {Object.values(inventory).reduce((a, b) => a + b, 0) > 0 && (
+          <span className={styles.inventoryBadge}>
+            {Object.values(inventory).reduce((a, b) => a + b, 0)}
+          </span>
+        )}
       </button>
 
       {/* Inventory Popup */}
@@ -257,13 +352,19 @@ export default function AudioRPG() {
       <SettingsPopup
         isVisible={showSettingsPopup}
         onClose={() => setShowSettingsPopup(false)}
-        onSendText={handleSendText}
         onEnsureMic={ensureMic}
         onTestSpeechRecognition={testSpeechRecognition}
         onTestSpeechSynthesis={testSpeechSynthesisFunction}
         getAvailableVoices={getAvailableVoices}
         setPreferredVoice={setPreferredVoice}
         getSelectedVoice={getSelectedVoice}
+      />
+
+      {/* Text Input Popup */}
+      <TextInputPopup
+        isVisible={showTextInputPopup}
+        onClose={() => setShowTextInputPopup(false)}
+        onSendText={sendTextToStory}
       />
 
       {/* Character Setup Popup */}

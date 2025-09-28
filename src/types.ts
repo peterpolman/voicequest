@@ -20,7 +20,7 @@ export interface Player {
   inventory: { id: string; qty: number }[];
   quests: [];
   flags: [];
-  location: string;
+  location: { area: string; x: number; y: number } | string;
 }
 
 export interface GameStatePatchBundle {
