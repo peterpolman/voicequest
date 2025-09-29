@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
 import type { Character } from "@/components";
-import type { Player } from "@/types";
+import type { Mechanics, Player } from "@/types";
+import { useRef, useState } from "react";
 
 export function useStoryStream() {
   const [status, setStatus] = useState("Ready");
@@ -8,6 +8,7 @@ export function useStoryStream() {
   const [inventory, setInventory] = useState<Record<string, number>>({});
   const [player, setPlayer] = useState<Player | null>(null);
   const [location, setLocation] = useState<Player["location"] | null>(null);
+  const [mechanics, setMechanics] = useState<Mechanics | null>(null);
   const [nextActions, setNextActions] = useState<string[]>([]);
   const lastFullScene = useRef("");
 
@@ -53,9 +54,8 @@ export function useStoryStream() {
         }
         if (payload.type === "state") {
           // Update inventory when game state is received (array -> record mapping)
-          const { inventory } = payload.state.player;
           const mapped: Record<string, number> = {};
-          for (const item of inventory) {
+          for (const item of payload.state.player.inventory) {
             const qty = Number(item.qty ?? 0);
             if (qty <= 0) continue;
             mapped[item.id] = (mapped[item.id] ?? 0) + qty;
@@ -63,6 +63,7 @@ export function useStoryStream() {
           setNextActions(payload.nextActions || []);
           setPlayer(payload.state.player);
           setLocation(payload.state.player?.location ?? null);
+          setMechanics(payload.mechanics);
           setInventory(mapped);
         }
         console.log(payload);
@@ -105,6 +106,7 @@ export function useStoryStream() {
     textStream,
     inventory,
     player,
+    mechanics,
     location,
     nextActions,
     setStatus,

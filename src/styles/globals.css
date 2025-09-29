@@ -2,6 +2,9 @@
 
 :root {
   color-scheme: light dark;
+  --success-color: #4ade80;
+  --fail-color: #f87171;
+  --blocked-color: #fbbf24;
 }
 
 * {

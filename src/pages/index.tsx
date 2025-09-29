@@ -1,6 +1,7 @@
 import {
   CharacterSetupPopup,
   InventoryPopup,
+  MechanicsDisplay,
   RecordButton,
   SettingsPopup,
   TextInputPopup,
@@ -118,6 +119,7 @@ export default function AudioRPG() {
     inventory,
     player,
     location,
+    mechanics,
     nextActions,
     clearNextActions,
     setStatus,
@@ -264,6 +266,9 @@ export default function AudioRPG() {
       {/* Full Window Text Stream */}
       <div className={styles.textStream}>{textStream}</div>
 
+      {/* Mechanics Display */}
+      <MechanicsDisplay mechanics={mechanics} />
+
       {/* Next Actions (suggestions) */}
       {nextActions.length > 0 && (
         <div className={styles.nextActionsBar}>
@@ -312,9 +317,7 @@ export default function AudioRPG() {
           {player?.hp ?? 0} / {player?.maxHp ?? 0} HP
         </span>
         <br />
-        <span>
-          {typeof location === "string" ? location : location?.area ?? ""}
-        </span>
+        <span>{location}</span>
       </div>
 
       <span className={styles.locationDisplay}></span>

@@ -41,6 +41,7 @@ export default async function handler(
     sseWrite(res, { type: "status", message: "Generating story..." });
 
     const session = getOrCreateSession(sessionId);
+    console.log(session);
 
     // Apply character-provided name and skills to the session before prompting
     try {
@@ -142,7 +143,7 @@ export default async function handler(
     let parsedBundle: any = null;
 
     // Stream text deltas and extract narrative as it builds
-    stream.on("response.output_text.delta", (event) => {
+    stream.on("response.output_text.delta", async (event) => {
       const delta = (event as any).delta as string;
       if (delta) {
         fullText += delta;
@@ -161,6 +162,7 @@ export default async function handler(
             if (sceneText.length > scene.length) {
               const newText = sceneText.slice(scene.length);
               scene = sceneText;
+              await updateSession(session, { action, scene });
               sseWrite(res, { type: "delta", text: newText });
             }
           }

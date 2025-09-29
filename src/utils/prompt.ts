@@ -45,12 +45,13 @@ Response Format
 
 Patch Rules
 	•	First op: {"op":"test","path":"/version","value":<base_version>}
-	•	Only patch existing fields with "replace"
+	•	Only patch existing fields with "replace" or "remove" operations
 	•	Always increment /version by +1 at the end if any change
 	•	Inventory operations:
     •	Add new item: {"op":"add","path":"/player/inventory/-","value":{"id":"<id>","qty":<n>}}
     •	Update quantity: {"op":"replace","path":"/player/inventory/<index>/qty","value":<new_qty>}
     •	Remove item: {"op":"remove","path":"/player/inventory/<index>"} (use exact index, never use "-")
+    •	CRITICAL: Never make up inventory indexes when running operations. This will break the update.
     •	CRITICAL: For remove operations, always use the exact array index from INVENTORY_INDEX_BY_ID
     •	CRITICAL: Never use "/player/inventory/-" with remove operations - this is invalid
     •	Example: if item "sword" is at index 0, use "/player/inventory/0" not "/player/inventory/-"
@@ -135,12 +136,6 @@ ${JSON.stringify(inventoryQtyById)}
   • If fail: modest setbacks, clues, or costs
   • If success: logical progress, rewards, items, flags, quest steps
   • Last: {"op":"replace","path":"/version","value":<base_version + 1>} if any changes made
-- For inventory changes:
-  • NEW items: add at "/player/inventory/-" 
-  • EXISTING items: use exact index from [INVENTORY_INDEX_BY_ID] 
-  • REMOVE items: use "/player/inventory/<exact_index>" (never use "-")
-  • Never reorder inventory arrays
-- Output valid structured JSON matching the exact response format
 `;
 
   return { systemPrompt, userPrompt };

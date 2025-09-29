@@ -21,21 +21,23 @@ export interface Player {
   location: string;
 }
 
+export interface Mechanics {
+  skill_used: string;
+  skill_value: number;
+  difficulty: number;
+  rand: number;
+  p: number;
+  outcome: "success" | "fail" | "blocked";
+  notes: string;
+}
+
 export interface GameStatePatchBundle {
   schema_version: string;
   operation_id: string;
   base_version: number;
   patch: RFC6902Operation[];
   next_actions: [];
-  mechanics: {
-    skill_used: string;
-    skill_value: number;
-    difficulty: number;
-    rand: number;
-    p: number;
-    outcome: "success" | "fail" | "blocked";
-    notes: string;
-  };
+  mechanics: Mechanics;
 }
 
 export interface GameState {

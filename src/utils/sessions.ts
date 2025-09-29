@@ -13,13 +13,13 @@ export function getOrCreateSession(sessionId: string): Session {
   let s = sessions.get(sessionId);
   if (!s) {
     s = {
-      summary: "", // compressed memory of everything so far
-      lastScene: "", // full text of last streamed scene (with A/B)
-      recent: [], // last N exchanges: { action, scene }
+      summary: "",
+      lastScene: "",
+      recent: [],
       state: {
         version: 1,
         player: {
-          name: "Furial",
+          name: "Unknown",
           level: 1,
           xp: 0,
           skills: {
@@ -31,10 +31,8 @@ export function getOrCreateSession(sessionId: string): Session {
           },
           hp: 10,
           maxHp: 10,
-          inventory: [{ id: "rusty_dagger", qty: 1 }],
-          quests: [],
-          flags: [],
-          location: { area: "Village", x: 0, y: 0 },
+          inventory: [],
+          location: "",
         },
       },
     };
