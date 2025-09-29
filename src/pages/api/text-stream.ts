@@ -2,6 +2,8 @@ import { buildPrompt } from "@/utils/prompt";
 import FastJsonPatch from "fast-json-patch";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { default as OpenAI } from "openai";
+import { zodTextFormat } from "openai/helpers/zod";
+import z from "zod";
 import { getOrCreateSession, updateSessionState } from "../../utils/sessions";
 import { updateSummary } from "../../utils/summarizer";
 
@@ -69,6 +71,43 @@ export default async function handler(
 
     let scene = "";
 
+    const RFC6902OperationFormat = z.object({
+      op: z.enum(["add", "remove", "replace", "move", "copy", "test"]),
+      path: z.string(),
+      value: z
+        .union([
+          z.string(),
+          z.number(),
+          z.boolean(),
+          z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])),
+          z.record(
+            z.string(),
+            z.union([z.string(), z.number(), z.boolean(), z.null()])
+          ),
+          z.null(),
+        ])
+        .optional(),
+    });
+
+    const GameStatePatchBundleFormat = z.object({
+      type: z.literal("patch_bundle"),
+      schema_version: z.string(),
+      operation_id: z.string(),
+      base_version: z.number(),
+      patch: z.array(RFC6902OperationFormat),
+      next_actions: z.array(z.string()),
+      scene: z.string(),
+      mechanics: z.object({
+        skill_used: z.string(),
+        skill_value: z.number(),
+        difficulty: z.number(),
+        rand: z.number(),
+        p: z.number(),
+        outcome: z.enum(["success", "fail", "blocked"]),
+        notes: z.string(),
+      }),
+    });
+
     // Stream response from OpenAI
     const { systemPrompt, userPrompt } = buildPrompt({
       state: session.state,
@@ -77,9 +116,12 @@ export default async function handler(
       lastScene: session.lastScene,
       recent: session.recent,
     });
-    const stream = await openai.chat.completions.create({
+    console.log("System Prompt:", systemPrompt);
+    console.log("User Prompt:", userPrompt);
+
+    const stream = openai.responses.stream({
       model: "gpt-4o-mini",
-      messages: [
+      input: [
         {
           role: "system",
           content: systemPrompt, // your long “You are a narrative co-pilot…” text
@@ -89,31 +131,70 @@ export default async function handler(
           content: userPrompt, // your [GAME_STATE] … [INSTRUCTIONS] block
         },
       ],
-      temperature: 0.9,
-      stream: true,
+      text: {
+        format: zodTextFormat(GameStatePatchBundleFormat, "patch_bundle"),
+      },
+      // temperature: 0.9,
+      // stream: true,
     });
 
-    let isEnded = false;
-    for await (const chunk of stream) {
-      const delta = chunk.choices?.[0]?.delta?.content;
+    let fullText = "";
+    let parsedBundle: any = null;
+
+    // Stream text deltas and extract narrative as it builds
+    stream.on("response.output_text.delta", (event) => {
+      const delta = (event as any).delta as string;
       if (delta) {
-        scene += delta;
-        if (!isEnded) {
-          isEnded = !!delta.match(/```/);
-          if (!isEnded) sseWrite(res, { type: "delta", text: delta });
+        fullText += delta;
+
+        // Try to extract and stream the scene field as it's being built
+        try {
+          // Look for partial JSON to extract scene field early
+          const sceneMatch = fullText.match(
+            /"scene"\s*:\s*"([^"\\]*(\\.[^"\\]*)*)"/
+          );
+          if (sceneMatch && sceneMatch[1]) {
+            const sceneText = sceneMatch[1]
+              .replace(/\\"/g, '"')
+              .replace(/\\n/g, "\n");
+            // Only send new parts of the scene
+            if (sceneText.length > scene.length) {
+              const newText = sceneText.slice(scene.length);
+              scene = sceneText;
+              sseWrite(res, { type: "delta", text: newText });
+            }
+          }
+        } catch {
+          // Ignore parsing errors during streaming
         }
       }
-    }
+    });
 
-    // Extract and parse JSON patch bundle from the response
-    const jsonMatch = scene.match(/```json\s*([\s\S]*?)\s*```/);
-    if (jsonMatch) {
+    stream.on("response.output_text.done", () => {
+      // Parse the complete structured response
       try {
-        const data = JSON.parse(jsonMatch[1]);
-        const { patch, mechanics, next_actions: nextActions } = data;
+        parsedBundle = JSON.parse(fullText);
+        console.log("Parsed bundle:", parsedBundle);
+      } catch (error) {
+        console.error("Failed to parse final response:", error, fullText);
+      }
+    });
+
+    const result = await stream.finalResponse();
+    console.log("Final response:", result);
+
+    // Use the parsed bundle data
+    if (parsedBundle) {
+      try {
+        const {
+          patch,
+          mechanics,
+          next_actions: nextActions,
+          scene: narrativeScene,
+        } = parsedBundle;
 
         // Apply patch to session state
-        if (patch.length) {
+        if (patch && patch.length) {
           const patchedState = FastJsonPatch.applyPatch(
             session.state,
             patch,
@@ -130,19 +211,27 @@ export default async function handler(
           mechanics,
           nextActions,
         });
+
+        // Update session with new content (use scene from parsed bundle)
+        await updateSession(session, {
+          action,
+          scene: narrativeScene || scene,
+        });
       } catch (error) {
-        console.error("Failed to parse JSON patch bundle:", error);
+        console.error("Failed to process patch bundle:", error);
         sseWrite(res, {
           type: "status",
-          message: "Failed to parse game state updates",
+          message: "Failed to apply game state updates",
         });
       }
+    } else {
+      console.log("No parsed bundle available");
+      // Fallback: update session with streamed scene
+      await updateSession(session, { action, scene });
     }
-    console.log(scene);
-    console.log(session.state);
 
-    // Update session with new content
-    await updateSession(session, { action, scene });
+    console.log("Final scene:", scene);
+    console.log("Session state:", session.state);
     res.end();
   } catch (error) {
     console.error("Text Stream Error:", error);

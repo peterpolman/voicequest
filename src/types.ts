@@ -18,9 +18,7 @@ export interface Player {
   hp: number;
   maxHp: number;
   inventory: { id: string; qty: number }[];
-  quests: [];
-  flags: [];
-  location: { area: string; x: number; y: number } | string;
+  location: string;
 }
 
 export interface GameStatePatchBundle {
@@ -28,7 +26,6 @@ export interface GameStatePatchBundle {
   operation_id: string;
   base_version: number;
   patch: RFC6902Operation[];
-  events: [];
   next_actions: [];
   mechanics: {
     skill_used: string;

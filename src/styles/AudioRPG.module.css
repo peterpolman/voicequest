@@ -90,17 +90,20 @@
   display: block;
   position: fixed;
   bottom: 10rem;
-  width: 100%;
+  left: 1rem;
+  right: 1rem;
   z-index: 1;
 }
 
 .nextActionBtn {
   padding: 0.6rem 0.9rem;
+  margin-top: 0.5rem;
+  border-radius: 25px;
   background: rgba(0, 0, 0, 0.6);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.2);
   font-family: "Pixelify Sans", monospace;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
@@ -681,7 +684,7 @@
   }
 
   .textStream {
-    font-size: 16px;
+    font-size: 20px;
     padding: 1rem;
   }
 

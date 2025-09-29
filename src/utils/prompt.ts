@@ -32,20 +32,35 @@ Mechanics
   •	If action is impossible by common sense/world rules → outcome = "blocked".
 	•	Always include a transparent "mechanics" object in the JSON with inputs + computed values.
 
-Patch Contract
-	•	Output ends with exactly one fenced \`\`\`json block containing {patch, inventory, next_actions}.
-	•	First op: {"op":"test","path":"/version","value":<base_version>}.
-	•	Only patch existing fields with "replace".
-	•	Always increment /version by +1 at the end if any change.
-	•	Inventory:
-    •	Add: {"op":"add","path":"/player/inventory/-","value":{"id":"<id>","qty":<n>}}.
-    •	Update qty: replace /player/inventory/<index>/qty (index from INVENTORY_INDEX_BY_ID).
-    •	Remove when qty ≤ 0: remove /player/inventory/<index> (optionally test id first).
-	  •	Never reorder inventory.
-	•	Provide "next_actions": exactly 2 short suggestions fitting the state.
-	•	Keep patch minimal + consistent with mechanics.outcome.
-	•	Do not output the full GameState or any prose inside JSON.
-  •	Do not make any formatting mistakes in the JSON. Very important. This will break the game.
+Response Format
+	•	Output structured JSON with these exact fields:
+    •	"type": "patch_bundle"
+    •	"schema_version": "1.0"
+    •	"operation_id": "<unique_id>" (generate UUID-like string)
+    •	"base_version": <current_version> (from STATE_SNIPPET)
+    •	"scene": "<narrative_text>" (your 40-word story narration)
+    •	"patch": [array of RFC6902 operations]
+    •	"next_actions": [exactly 2 short action suggestions]
+    •	"mechanics": {skill_used, skill_value, difficulty, rand, p, outcome, notes}
+
+Patch Rules
+	•	First op: {"op":"test","path":"/version","value":<base_version>}
+	•	Only patch existing fields with "replace"
+	•	Always increment /version by +1 at the end if any change
+	•	Inventory operations:
+    •	Add new item: {"op":"add","path":"/player/inventory/-","value":{"id":"<id>","qty":<n>}}
+    •	Update quantity: {"op":"replace","path":"/player/inventory/<index>/qty","value":<new_qty>}
+    •	Remove item: {"op":"remove","path":"/player/inventory/<index>"} (use exact index, never use "-")
+    •	CRITICAL: For remove operations, always use the exact array index from INVENTORY_INDEX_BY_ID
+    •	CRITICAL: Never use "/player/inventory/-" with remove operations - this is invalid
+    •	Example: if item "sword" is at index 0, use "/player/inventory/0" not "/player/inventory/-"
+	•	Keep patch minimal + consistent with mechanics.outcome
+
+Scene Narration
+	•	Write exactly one scene narrative in the "scene" field
+	•	2nd person perspective ("you…") describing action + world reaction
+	•	Maximum 40 words, maintain continuity with [SUMMARY] and [LAST_SCENE]
+	•	No markdown, no formatting, just plain narrative text
 
 Narration
 	•	Narrate in 2nd person (“you…”) to describe the users action and how the world reacts to it.
@@ -110,14 +125,22 @@ ${JSON.stringify(inventoryIndexById)}
 ${JSON.stringify(inventoryQtyById)}
 
 [INSTRUCTIONS]
-- Use the mechanics formula from the system prompt to determine outcome = success/fail/blocked.
-- If blocked, explain briefly in prose and only propose minimal non-reward changes (e.g., time +1).
-- If fail, "fail forward" where logical (small setback, clue, noise); modest costs only.
-- If success, propose logical progress/rewards (items/flags/quest steps).
-- Then output ONLY the PatchBundle as a final fenced code block (\`\`\`json ... \`\`\`), including the \`mechanics\` object with your numeric inputs and p, and ensuring the first patch op is the /version test.
-- Use base_version = state.version.
-- For non-inventory fields: only use "replace" on existing paths.
-- For inventory: add new items at "/player/inventory/-"; replace qty at the index; remove item when qty <= 0. Indices from [INVENTORY_INDEX_BY_ID]. Do not reorder inventory.
+- Use the mechanics formula to determine outcome = success/fail/blocked
+- Calculate and include all mechanics values: skill_used, skill_value, difficulty, rand, p, outcome, notes
+- Write narrative scene (max 40 words) in "scene" field describing action + world reaction
+- Generate exactly 2 "next_actions" suggestions fitting the current state
+- Create patch operations:
+  • First: {"op":"test","path":"/version","value":<base_version>} where base_version = state.version
+  • If blocked: minimal changes only (e.g., time +1)
+  • If fail: modest setbacks, clues, or costs
+  • If success: logical progress, rewards, items, flags, quest steps
+  • Last: {"op":"replace","path":"/version","value":<base_version + 1>} if any changes made
+- For inventory changes:
+  • NEW items: add at "/player/inventory/-" 
+  • EXISTING items: use exact index from [INVENTORY_INDEX_BY_ID] 
+  • REMOVE items: use "/player/inventory/<exact_index>" (never use "-")
+  • Never reorder inventory arrays
+- Output valid structured JSON matching the exact response format
 `;
 
   return { systemPrompt, userPrompt };
